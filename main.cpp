@@ -78,7 +78,7 @@ private:
 
 using Promotions = std::vector<std::unique_ptr<Promotion>>;
 
-Price checkout(const Cart& cart) {
+Price calculate_price(const Cart& cart) {
     Price price = 0;
     for (SKU sku : cart) {
         price += unit_prices.at(sku);
@@ -86,20 +86,20 @@ Price checkout(const Cart& cart) {
     return price;
 }
 
-Price checkout(const Cart& c, const Promotion* promotion) {
+Price calculate_price(const Cart& c, const Promotion* promotion) {
     Cart cart = c;
     Price price = promotion->promote(cart);
-    price += checkout(cart);
+    price += calculate_price(cart);
     return price;
 }
 
-Price checkout(const Cart& c, const Promotions& promotions) {
+Price calculate_price(const Cart& c, const Promotions& promotions) {
     Cart cart = c;
     Price price = 0;
     for (const auto& promotion : promotions) {
         price += promotion->promote(cart);
     }
-    price += checkout(cart);
+    price += calculate_price(cart);
     return price;
 }
 
@@ -107,23 +107,23 @@ int main() {
     {
         // Empty cart
         Cart cart("");
-        assert(checkout(cart) == 0);
+        assert(calculate_price(cart) == 0);
     }
     {
         // "ab" == "ba"
         Cart cart1("ab");
         Cart cart2("ba");
-        assert(checkout(cart1) == checkout(cart2));
+        assert(calculate_price(cart1) == calculate_price(cart2));
     }
     {
         // 2 identical SKUs
         Cart cart("aa");
-        assert(checkout(cart) == 100);
+        assert(calculate_price(cart) == 100);
     }
     {
         // Scenario A
         Cart cart("abc");
-        assert(checkout(cart) == 100);
+        assert(calculate_price(cart) == 100);
     }
     {
         // Test Individual promotion
@@ -131,17 +131,17 @@ int main() {
         {
             // Not enough SKUs for promotion
             Cart cart("aa");
-            assert(checkout(cart, promotion.get()) == 100);
+            assert(calculate_price(cart, promotion.get()) == 100);
         }
         {
             // Exactly enough SKUs for 1 promotion
             Cart cart("aaa");
-            assert(checkout(cart, promotion.get()) == 130);
+            assert(calculate_price(cart, promotion.get()) == 130);
         }
         {
             // Exactly enough SKUs for 2 promotions
             Cart cart("aaaaaa");
-            assert(checkout(cart, promotion.get()) == 260);
+            assert(calculate_price(cart, promotion.get()) == 260);
         }
     }
     {
@@ -150,28 +150,28 @@ int main() {
         {
             // Not enough SKUs for promotion
             Cart cart("c");
-            assert(checkout(cart, promotion.get()) == 20);
+            assert(calculate_price(cart, promotion.get()) == 20);
         }
         {
             // Not enough SKUs for promotion
             Cart cart("bc");
-            assert(checkout(cart, promotion.get()) == 50);
+            assert(calculate_price(cart, promotion.get()) == 50);
         }
         {
             // Exactly enough SKUs for 1 promotion
             Cart cart("cd");
-            assert(checkout(cart, promotion.get()) == 30);
+            assert(calculate_price(cart, promotion.get()) == 30);
         }
         {
             // Exactly enough SKUs for 2 promotions
             Cart cart("ccdd");
-            assert(checkout(cart, promotion.get()) == 60);
+            assert(calculate_price(cart, promotion.get()) == 60);
         }
         {
             // "cd" == "dc"
             Cart cart1("cd");
             Cart cart2("dc");
-            assert(checkout(cart1, promotion.get()) == checkout(cart2, promotion.get()));
+            assert(calculate_price(cart1, promotion.get()) == calculate_price(cart2, promotion.get()));
         }
     }
     {
@@ -182,12 +182,12 @@ int main() {
         {
             // Scenario B
             Cart cart("aaaaabbbbbc");
-            assert(checkout(cart, promotions) == 370);
+            assert(calculate_price(cart, promotions) == 370);
         }
         {
             // Scenario C
             Cart cart("aaabbbbbcd");
-            assert(checkout(cart, promotions) == 280);
+            assert(calculate_price(cart, promotions) == 280);
         }
     }
 }
