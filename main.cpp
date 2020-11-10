@@ -17,6 +17,49 @@ Price charge(Cart& cart) {
     return price;
 }
 
+// Abstract base class
+class Promotion {
+public:
+    ~Promotion() = default;
+
+    Price promote(Cart& cart) const { return do_promote(cart); }
+
+private:
+    virtual Price do_promote(Cart& cart) const = 0;
+};
+
+// Class that implements individual promotion
+class Individual : public Promotion {
+public:
+    explicit Individual(int n, SKU sku, Price price) : n_(n), sku_(sku), price_(price) {}
+
+private:
+    Price do_promote(Cart& cart) const override {
+        // TODO
+        return 0;
+    }
+
+    int n_;
+    SKU sku_;
+    Price price_;
+};
+
+// Class that implements combined promotion
+class Combined : public Promotion {
+public:
+    explicit Combined(SKU sku1, SKU sku2, Price price) : sku1_(sku1), sku2_(sku2), price_(price) {}
+
+private:
+    Price do_promote(Cart& cart) const override {
+        // TODO
+        return 0;
+    }
+
+    SKU sku1_;
+    SKU sku2_;
+    Price price_;
+};
+
 int main() {
     {
         // Empty cart
