@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 using Cart = std::string;
 using SKU = char;
@@ -162,6 +163,32 @@ int main() {
             Cart cart2("dc");
             Price price2 = promotion->promote(cart2);
             assert(price1 == price2);
+        }
+    }
+    {
+        std::vector<std::unique_ptr<Promotion>> active_promotions;
+        active_promotions.push_back(std::make_unique<Individual>(3, 'a', 130));
+        active_promotions.push_back(std::make_unique<Individual>(2, 'b', 45));
+        active_promotions.push_back(std::make_unique<Combined>('c', 'd', 30));
+        {
+            // Scenario B
+            Cart cart("aaaaabbbbbc");
+            Price price = 0;
+            for (const auto& p : active_promotions) {
+                price += p->promote(cart);
+            }
+            price += charge(cart);
+            assert(price == 370);
+        }
+        {
+            // Scenario C
+            Cart cart("aaabbbbbcd");
+            Price price = 0;
+            for (const auto& p : active_promotions) {
+                price += p->promote(cart);
+            }
+            price += charge(cart);
+            assert(price == 280);
         }
     }
 }
