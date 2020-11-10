@@ -1,4 +1,5 @@
 #include <cassert>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -35,8 +36,15 @@ public:
 
 private:
     Price do_promote(Cart& cart) const override {
-        // TODO
-        return 0;
+        Price price = 0;
+        const std::string p(n_, sku_);
+        std::string::size_type pos = cart.find(p);
+        while (pos != std::string::npos) {
+            cart.erase(pos, n_);
+            pos = cart.find(p);
+            price += price_;
+        }
+        return price;
     }
 
     int n_;
@@ -81,5 +89,27 @@ int main() {
         // Scenario A
         Cart cart("abc");
         assert(charge(cart) == 100);
+    }
+    {
+        // Test Individual promotion
+        auto promotion = std::make_unique<Individual>(3, 'a', 130);
+        {
+            // Not enough SKUs for promotion
+            Cart cart("aa");
+            Price price = promotion->promote(cart);
+            assert(price == 0);
+        }
+        {
+            // Exactly enough SKUs for 1 promotion
+            Cart cart("aaa");
+            Price price = promotion->promote(cart);
+            assert(price == 130);
+        }
+        {
+            // Exactly enough SKUs for 2 promotions
+            Cart cart("aaaaaa");
+            Price price = promotion->promote(cart);
+            assert(price == 260);
+        }
     }
 }
