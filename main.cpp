@@ -76,7 +76,7 @@ private:
     Price price_;
 };
 
-using Promotions = std::vector<std::unique_ptr<Promotion>>;
+using Promotions = std::vector<Promotion*>;
 
 Price calculate_price(const Cart& cart) {
     Price price = 0;
@@ -107,72 +107,66 @@ int main() {
     {
         // Empty cart
         assert(calculate_price("") == 0);
-    }
-    {
+
         // "ab" == "ba"
         assert(calculate_price("ab") == calculate_price("ba"));
-    }
-    {
-        // 2 identical SKUs
+
+        // "aa" == 2 * "a"
         assert(calculate_price("aa") == 2 * calculate_price("a"));
-    }
-    {
-        // Scenario A
+
+        // "abc" == "a" + "b" + "c"
         assert(calculate_price("abc") == calculate_price("a") + calculate_price("b") + calculate_price("c"));
     }
     {
         // Test Individual promotion
         auto promotion = std::make_unique<Individual>(3, 'a', 130);
-        {
-            // Not enough SKUs for promotion
-            assert(calculate_price("aa", promotion.get()) == 2 * calculate_price("a", promotion.get()));
-        }
-        {
-            // Exactly enough SKUs for 1 promotion
-            assert(calculate_price("aaa", promotion.get()) == 130);
-        }
-        {
-            // Exactly enough SKUs for 2 promotions
-            assert(calculate_price("aaaaaa", promotion.get()) == 2 * calculate_price("aaa", promotion.get()));
-        }
+
+        // Not enough SKUs for promotion
+        assert(calculate_price("aa", promotion.get()) == 2 * calculate_price("a", promotion.get()));
+
+        // Exactly enough SKUs for 1 promotion
+        assert(calculate_price("aaa", promotion.get()) == 130);
+
+        // Exactly enough SKUs for 2 promotions
+        assert(calculate_price("aaaaaa", promotion.get()) == 2 * calculate_price("aaa", promotion.get()));
     }
     {
         // Test Combined promotion
         auto promotion = std::make_unique<Combined>('c', 'd', 30);
-        {
-            // Not enough SKUs for promotion
-            assert(calculate_price("c", promotion.get()) == 20);
-        }
-        {
-            // Not enough SKUs for promotion
-            assert(calculate_price("bc", promotion.get()) ==
-                   calculate_price("b", promotion.get()) + calculate_price("c", promotion.get()));
-        }
-        {
-            // Exactly enough SKUs for 1 promotion
-            assert(calculate_price("cd", promotion.get()) == 30);
-        }
-        {
-            // Exactly enough SKUs for 2 promotions
-            assert(calculate_price("ccdd", promotion.get()) == 2 * calculate_price("cd", promotion.get()));
-        }
-        {
-            // "cd" == "dc"
-            assert(calculate_price("cd", promotion.get()) == calculate_price("dc", promotion.get()));
-        }
+
+        // Not enough SKUs for promotion
+        assert(calculate_price("c", promotion.get()) == calculate_price("c"));
+
+        // Not enough SKUs for promotion
+        assert(calculate_price("bc", promotion.get()) == calculate_price("b") + calculate_price("c"));
+
+        // Exactly enough SKUs for 1 promotion
+        assert(calculate_price("cd", promotion.get()) == 30);
+
+        // Exactly enough SKUs for 2 promotions
+        assert(calculate_price("ccdd", promotion.get()) == 2 * calculate_price("cd", promotion.get()));
+
+        // "cd" == "dc"
+        assert(calculate_price("cd", promotion.get()) == calculate_price("dc", promotion.get()));
     }
     {
+        auto prom_a = std::make_unique<Individual>(3, 'a', 130);
+        auto prom_b = std::make_unique<Individual>(2, 'b', 45);
+        auto prom_cd = std::make_unique<Combined>('c', 'd', 30);
+
         Promotions promotions;
-        promotions.push_back(std::make_unique<Individual>(3, 'a', 130));
-        promotions.push_back(std::make_unique<Individual>(2, 'b', 45));
-        promotions.push_back(std::make_unique<Combined>('c', 'd', 30));
-        {
-            // Scenario B
-            assert(calculate_price("aaaaabbbbbc", promotions) == 370);
-        }
-        {
-            // Scenario C
-            assert(calculate_price("aaabbbbbcd", promotions) == 280);
-        }
+        promotions.push_back(prom_a.get());
+        promotions.push_back(prom_b.get());
+        promotions.push_back(prom_cd.get());
+
+        // Scenario B
+        assert(calculate_price("aaaaabbbbbc", promotions) ==
+               calculate_price("aaa", prom_a.get()) + calculate_price("aa") + 2 * calculate_price("bb", prom_b.get()) +
+                   calculate_price("b") + calculate_price("c"));
+
+        // Scenario C
+        assert(calculate_price("aaabbbbbcd", promotions) ==
+               calculate_price("aaa", prom_a.get()) + 2 * calculate_price("bb", prom_b.get()) + calculate_price("b") +
+                   calculate_price("cd", prom_cd.get()));
     }
 }
