@@ -11,15 +11,6 @@ using Price = int;  // Very basic data type but very easy to work with!
 
 const std::unordered_map<SKU, Price> unit_prices = {{'a', 50}, {'b', 30}, {'c', 20}, {'d', 15}};
 
-// Calculates price for all SKUs left in the cart after all promotions have beed performed
-Price charge(Cart& cart) {
-    Price price = 0;
-    for (char c : cart) {
-        price += unit_prices.at(c);
-    }
-    return price;
-}
-
 // Abstract base class
 class Promotion {
 public:
@@ -85,27 +76,54 @@ private:
     Price price_;
 };
 
+using Promotions = std::vector<std::unique_ptr<Promotion>>;
+
+Price checkout(const Cart& cart) {
+    Price price = 0;
+    for (SKU sku : cart) {
+        price += unit_prices.at(sku);
+    }
+    return price;
+}
+
+Price checkout(const Cart& c, const Promotion* promotion) {
+    Cart cart = c;
+    Price price = promotion->promote(cart);
+    price += checkout(cart);
+    return price;
+}
+
+Price checkout(const Cart& c, const Promotions& promotions) {
+    Cart cart = c;
+    Price price = 0;
+    for (const auto& promotion : promotions) {
+        price += promotion->promote(cart);
+    }
+    price += checkout(cart);
+    return price;
+}
+
 int main() {
     {
         // Empty cart
         Cart cart("");
-        assert(charge(cart) == 0);
+        assert(checkout(cart) == 0);
     }
     {
         // "ab" == "ba"
         Cart cart1("ab");
         Cart cart2("ba");
-        assert(charge(cart1) == charge(cart2));
+        assert(checkout(cart1) == checkout(cart2));
     }
     {
         // 2 identical SKUs
         Cart cart("aa");
-        assert(charge(cart) == 100);
+        assert(checkout(cart) == 100);
     }
     {
         // Scenario A
         Cart cart("abc");
-        assert(charge(cart) == 100);
+        assert(checkout(cart) == 100);
     }
     {
         // Test Individual promotion
@@ -113,20 +131,17 @@ int main() {
         {
             // Not enough SKUs for promotion
             Cart cart("aa");
-            Price price = promotion->promote(cart);
-            assert(price == 0);
+            assert(checkout(cart, promotion.get()) == 100);
         }
         {
             // Exactly enough SKUs for 1 promotion
             Cart cart("aaa");
-            Price price = promotion->promote(cart);
-            assert(price == 130);
+            assert(checkout(cart, promotion.get()) == 130);
         }
         {
             // Exactly enough SKUs for 2 promotions
             Cart cart("aaaaaa");
-            Price price = promotion->promote(cart);
-            assert(price == 260);
+            assert(checkout(cart, promotion.get()) == 260);
         }
     }
     {
@@ -135,60 +150,44 @@ int main() {
         {
             // Not enough SKUs for promotion
             Cart cart("c");
-            Price price = promotion->promote(cart);
-            assert(price == 0);
+            assert(checkout(cart, promotion.get()) == 20);
         }
         {
             // Not enough SKUs for promotion
             Cart cart("bc");
-            Price price = promotion->promote(cart);
-            assert(price == 0);
+            assert(checkout(cart, promotion.get()) == 50);
         }
         {
             // Exactly enough SKUs for 1 promotion
             Cart cart("cd");
-            Price price = promotion->promote(cart);
-            assert(price == 30);
+            assert(checkout(cart, promotion.get()) == 30);
         }
         {
             // Exactly enough SKUs for 2 promotions
             Cart cart("ccdd");
-            Price price = promotion->promote(cart);
-            assert(price == 60);
+            assert(checkout(cart, promotion.get()) == 60);
         }
         {
             // "cd" == "dc"
             Cart cart1("cd");
-            Price price1 = promotion->promote(cart1);
             Cart cart2("dc");
-            Price price2 = promotion->promote(cart2);
-            assert(price1 == price2);
+            assert(checkout(cart1, promotion.get()) == checkout(cart2, promotion.get()));
         }
     }
     {
-        std::vector<std::unique_ptr<Promotion>> active_promotions;
-        active_promotions.push_back(std::make_unique<Individual>(3, 'a', 130));
-        active_promotions.push_back(std::make_unique<Individual>(2, 'b', 45));
-        active_promotions.push_back(std::make_unique<Combined>('c', 'd', 30));
+        Promotions promotions;
+        promotions.push_back(std::make_unique<Individual>(3, 'a', 130));
+        promotions.push_back(std::make_unique<Individual>(2, 'b', 45));
+        promotions.push_back(std::make_unique<Combined>('c', 'd', 30));
         {
             // Scenario B
             Cart cart("aaaaabbbbbc");
-            Price price = 0;
-            for (const auto& p : active_promotions) {
-                price += p->promote(cart);
-            }
-            price += charge(cart);
-            assert(price == 370);
+            assert(checkout(cart, promotions) == 370);
         }
         {
             // Scenario C
             Cart cart("aaabbbbbcd");
-            Price price = 0;
-            for (const auto& p : active_promotions) {
-                price += p->promote(cart);
-            }
-            price += charge(cart);
-            assert(price == 280);
+            assert(checkout(cart, promotions) == 280);
         }
     }
 }
