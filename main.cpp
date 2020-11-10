@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 using Cart = std::string;
 using SKU = char;
@@ -59,8 +60,23 @@ public:
 
 private:
     Price do_promote(Cart& cart) const override {
-        // TODO
-        return 0;
+        Price price = 0;
+        std::string::size_type pos1 = cart.find(sku1_);
+        std::string::size_type pos2 = cart.find(sku2_);
+        while (pos1 != std::string::npos && pos2 != std::string::npos) {
+            // Erase SKUs from cart
+            if (pos1 > pos2) {
+                std::swap(pos1, pos2);
+            }
+            cart.erase(pos2, 1);
+            cart.erase(pos1, 1);
+
+            price += price_;
+
+            pos1 = cart.find(sku1_);
+            pos2 = cart.find(sku2_);
+        }
+        return price;
     }
 
     SKU sku1_;
@@ -110,6 +126,42 @@ int main() {
             Cart cart("aaaaaa");
             Price price = promotion->promote(cart);
             assert(price == 260);
+        }
+    }
+    {
+        // Test Combined promotion
+        auto promotion = std::make_unique<Combined>('c', 'd', 30);
+        {
+            // Not enough SKUs for promotion
+            Cart cart("c");
+            Price price = promotion->promote(cart);
+            assert(price == 0);
+        }
+        {
+            // Not enough SKUs for promotion
+            Cart cart("bc");
+            Price price = promotion->promote(cart);
+            assert(price == 0);
+        }
+        {
+            // Exactly enough SKUs for 1 promotion
+            Cart cart("cd");
+            Price price = promotion->promote(cart);
+            assert(price == 30);
+        }
+        {
+            // Exactly enough SKUs for 2 promotions
+            Cart cart("ccdd");
+            Price price = promotion->promote(cart);
+            assert(price == 60);
+        }
+        {
+            // "cd" == "dc"
+            Cart cart1("cd");
+            Price price1 = promotion->promote(cart1);
+            Cart cart2("dc");
+            Price price2 = promotion->promote(cart2);
+            assert(price1 == price2);
         }
     }
 }
